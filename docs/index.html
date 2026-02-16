@@ -17,40 +17,91 @@
         }
         .container {
             text-align: center;
-            max-width: 600px;
+            max-width: 700px;
             padding: 2rem;
         }
         h1 {
             font-size: 3rem;
             color: #58a6ff;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
-        .emoji { font-size: 4rem; margin-bottom: 1.5rem; }
-        p {
+        .subtitle {
             font-size: 1.2rem;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
             color: #8b949e;
+            margin-bottom: 2.5rem;
         }
-        a.btn {
+        .games {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .game-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            width: 280px;
+            text-align: center;
+            transition: border-color 0.2s, transform 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .game-card:hover {
+            border-color: #58a6ff;
+            transform: translateY(-4px);
+        }
+        .game-card .icon { font-size: 3rem; margin-bottom: 1rem; }
+        .game-card h2 { font-size: 1.4rem; color: #f0f6fc; margin-bottom: 0.5rem; }
+        .game-card p { font-size: 0.95rem; color: #8b949e; line-height: 1.5; }
+        .game-card .tag {
             display: inline-block;
-            padding: 0.75rem 1.5rem;
+            margin-top: 1rem;
+            padding: 0.25rem 0.75rem;
             background: #238636;
             color: #fff;
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            transition: background 0.2s;
+            border-radius: 20px;
+            font-size: 0.8rem;
         }
-        a.btn:hover { background: #2ea043; }
+        .coming-soon .tag { background: #30363d; color: #8b949e; }
+        .coming-soon { opacity: 0.5; pointer-events: none; }
+        .footer {
+            margin-top: 1rem;
+        }
+        .footer a {
+            color: #58a6ff;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        .footer a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="emoji">🎮🤖</div>
-        <h1>Agent Games</h1>
-        <p>A Python project for agent-based games. Build, compete, and evolve intelligent agents.</p>
-        <a class="btn" href="https://github.com/bivasmaiti26/agent-games">View on GitHub</a>
+        <h1>🤖 Agent Games</h1>
+        <p class="subtitle">Watch AI agents compete. Give them instructions and see who wins.</p>
+
+        <div class="games">
+            <a class="game-card" href="game.html">
+                <div class="icon">❌⭕</div>
+                <h2>Tic-Tac-Toe</h2>
+                <p>Two agents battle on the classic 3×3 grid. Coach them with your own strategies!</p>
+                <span class="tag">Play Now</span>
+            </a>
+
+            <div class="game-card coming-soon">
+                <div class="icon">♟️</div>
+                <h2>Connect Four</h2>
+                <p>Agents drop pieces and plan ahead. Coming soon!</p>
+                <span class="tag">Coming Soon</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="https://github.com/bivasmaiti26/agent-games">View on GitHub →</a>
+        </div>
     </div>
 </body>
 </html>

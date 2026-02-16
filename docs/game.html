@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe – Agent Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #21262d;
+        }
+        .header a {
+            color: #58a6ff;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        .header a:hover { text-decoration: underline; }
+        .header h1 { font-size: 1.3rem; color: #f0f6fc; }
+
+        /* Layout */
+        .main {
+            display: flex;
+            max-width: 1100px;
+            margin: 2rem auto;
+            gap: 2rem;
+            padding: 0 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Agent panels */
+        .agent-panel {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+        }
+        .agent-panel h2 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .agent-panel.x h2 { color: #58a6ff; }
+        .agent-panel.o h2 { color: #f78166; }
+        .agent-panel label {
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+        .agent-panel textarea {
+            width: 100%;
+            height: 80px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            color: #c9d1d9;
+            padding: 0.6rem;
+            font-family: inherit;
+            font-size: 0.85rem;
+            resize: vertical;
+            margin-bottom: 1rem;
+        }
+        .agent-panel textarea:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+        .thinking-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 0.6rem;
+            font-size: 0.8rem;
+            color: #8b949e;
+            min-height: 60px;
+            flex-grow: 1;
+        }
+        .thinking-box .thought {
+            margin-bottom: 0.3rem;
+            line-height: 1.4;
+        }
+
+        /* Center game area */
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        /* Board */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 6px;
+        }
+        .cell {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            cursor: default;
+            transition: background 0.15s;
+        }
+        .cell.x { color: #58a6ff; }
+        .cell.o { color: #f78166; }
+        .cell.win-cell {
+            background: #1a3a2a;
+            border-color: #238636;
+        }
+        .cell.highlight {
+            background: #1c2333;
+        }
+
+        /* Status */
+        .status {
+            font-size: 1.1rem;
+            color: #f0f6fc;
+            text-align: center;
+            min-height: 1.5rem;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+        }
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            background: #21262d;
+            color: #c9d1d9;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .btn:hover { background: #30363d; border-color: #58a6ff; }
+        .btn.primary { background: #238636; border-color: #238636; color: #fff; }
+        .btn.primary:hover { background: #2ea043; }
+        .btn:disabled { opacity: 0.4; cursor: default; }
+
+        /* Speed control */
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #8b949e;
+        }
+        .speed-control input[type="range"] {
+            width: 100px;
+            accent-color: #58a6ff;
+        }
+
+        /* Move log */
+        .move-log {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 0.75rem;
+            max-height: 140px;
+            overflow-y: auto;
+            width: 100%;
+            max-width: 320px;
+            font-size: 0.8rem;
+        }
+        .move-log .move-entry {
+            padding: 0.2rem 0;
+            color: #8b949e;
+        }
+        .move-log .move-entry span.x-move { color: #58a6ff; }
+        .move-log .move-entry span.o-move { color: #f78166; }
+
+        /* Score */
+        .scoreboard {
+            display: flex;
+            gap: 2rem;
+            font-size: 1rem;
+        }
+        .scoreboard .score { font-weight: 700; }
+        .scoreboard .x-score { color: #58a6ff; }
+        .scoreboard .o-score { color: #f78166; }
+        .scoreboard .draw-score { color: #8b949e; }
+
+        @media (max-width: 800px) {
+            .main { flex-direction: column; align-items: center; }
+            .agent-panel { width: 100%; max-width: 340px; }
+            .board { grid-template-columns: repeat(3, 80px); grid-template-rows: repeat(3, 80px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html">← Back to Games</a>
+        <h1>❌⭕ Tic-Tac-Toe</h1>
+        <span></span>
+    </div>
+
+    <div class="main">
+        <!-- Agent X Panel -->
+        <div class="agent-panel x">
+            <h2>🤖 Agent X</h2>
+            <label for="instrX">Your instructions:</label>
+            <textarea id="instrX" placeholder="e.g. Play corners first, be aggressive, try to fork..."></textarea>
+            <label>Agent thinking:</label>
+            <div class="thinking-box" id="thinkX"></div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="game-area">
+            <div class="scoreboard">
+                <div>X: <span class="score x-score" id="scoreX">0</span></div>
+                <div>Draw: <span class="score draw-score" id="scoreDraw">0</span></div>
+                <div>O: <span class="score o-score" id="scoreO">0</span></div>
+            </div>
+
+            <div class="status" id="status">Press Start to begin!</div>
+
+            <div class="board" id="board">
+                <div class="cell" data-i="0"></div>
+                <div class="cell" data-i="1"></div>
+                <div class="cell" data-i="2"></div>
+                <div class="cell" data-i="3"></div>
+                <div class="cell" data-i="4"></div>
+                <div class="cell" data-i="5"></div>
+                <div class="cell" data-i="6"></div>
+                <div class="cell" data-i="7"></div>
+                <div class="cell" data-i="8"></div>
+            </div>
+
+            <div class="controls">
+                <button class="btn primary" id="startBtn" onclick="startGame()">▶ Start</button>
+                <button class="btn" id="resetBtn" onclick="resetScores()">Reset Scores</button>
+            </div>
+
+            <div class="speed-control">
+                <span>Speed:</span>
+                <input type="range" id="speed" min="100" max="2000" value="800" step="100">
+                <span id="speedLabel">0.8s</span>
+            </div>
+
+            <div class="move-log" id="moveLog"></div>
+        </div>
+
+        <!-- Agent O Panel -->
+        <div class="agent-panel o">
+            <h2>🤖 Agent O</h2>
+            <label for="instrO">Your instructions:</label>
+            <textarea id="instrO" placeholder="e.g. Always take center, play defensively, block opponent..."></textarea>
+            <label>Agent thinking:</label>
+            <div class="thinking-box" id="thinkO"></div>
+        </div>
+    </div>
+
+<script>
+// ─── Game State ───
+let board = Array(9).fill(null);
+let currentPlayer = 'X';
+let gameRunning = false;
+let scores = { X: 0, O: 0, D: 0 };
+let moveCount = 0;
+
+const LINES = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+];
+const CORNERS = [0, 2, 6, 8];
+const EDGES = [1, 3, 5, 7];
+const CENTER = 4;
+const POS_NAMES = ['top-left','top-mid','top-right','mid-left','center','mid-right','bot-left','bot-mid','bot-right'];
+
+// ─── UI References ───
+const cells = document.querySelectorAll('.cell');
+const statusEl = document.getElementById('status');
+const moveLogEl = document.getElementById('moveLog');
+const speedSlider = document.getElementById('speed');
+const speedLabel = document.getElementById('speedLabel');
+
+speedSlider.addEventListener('input', () => {
+    speedLabel.textContent = (speedSlider.value / 1000).toFixed(1) + 's';
+});
+
+// ─── Instruction Parser ───
+function parseInstructions(text) {
+    const t = text.toLowerCase();
+    return {
+        preferCorners: /corner/i.test(t),
+        preferCenter: /center|middle/i.test(t),
+        preferEdges: /edge|side/i.test(t),
+        aggressive: /aggress|attack|offen/i.test(t),
+        defensive: /defen|block|safe|careful/i.test(t),
+        random: /random|chaos|unpredic/i.test(t),
+        fork: /fork|trap/i.test(t),
+    };
+}
+
+// ─── Agent AI ───
+function getEmpty(b) {
+    return b.map((v, i) => v === null ? i : -1).filter(i => i >= 0);
+}
+
+function checkWinner(b) {
+    for (const [a, c, d] of LINES) {
+        if (b[a] && b[a] === b[c] && b[a] === b[d]) return { winner: b[a], line: [a, c, d] };
+    }
+    if (b.every(c => c !== null)) return { winner: 'D', line: null };
+    return null;
+}
+
+function findWinningMove(b, player) {
+    for (const i of getEmpty(b)) {
+        const copy = [...b];
+        copy[i] = player;
+        const res = checkWinner(copy);
+        if (res && res.winner === player) return i;
+    }
+    return -1;
+}
+
+function findForkMove(b, player) {
+    for (const i of getEmpty(b)) {
+        const copy = [...b];
+        copy[i] = player;
+        let winWays = 0;
+        for (const j of getEmpty(copy)) {
+            const copy2 = [...copy];
+            copy2[j] = player;
+            if (checkWinner(copy2)?.winner === player) winWays++;
+        }
+        if (winWays >= 2) return i;
+    }
+    return -1;
+}
+
+function minimax(b, player, depth, isMax, alpha, beta) {
+    const result = checkWinner(b);
+    if (result) {
+        if (result.winner === 'D') return 0;
+        return result.winner === player ? 10 - depth : depth - 10;
+    }
+    const empty = getEmpty(b);
+    if (isMax) {
+        let best = -Infinity;
+        for (const i of empty) {
+            b[i] = player;
+            best = Math.max(best, minimax(b, player, depth + 1, false, alpha, beta));
+            b[i] = null;
+            alpha = Math.max(alpha, best);
+            if (beta <= alpha) break;
+        }
+        return best;
+    } else {
+        const opp = player === 'X' ? 'O' : 'X';
+        let best = Infinity;
+        for (const i of empty) {
+            b[i] = opp;
+            best = Math.min(best, minimax(b, player, depth + 1, true, alpha, beta));
+            b[i] = null;
+            beta = Math.min(beta, best);
+            if (beta <= alpha) break;
+        }
+        return best;
+    }
+}
+
+function bestMinimax(b, player) {
+    let bestScore = -Infinity;
+    let bestMove = -1;
+    for (const i of getEmpty(b)) {
+        b[i] = player;
+        const score = minimax(b, player, 0, false, -Infinity, Infinity);
+        b[i] = null;
+        if (score > bestScore) { bestScore = score; bestMove = i; }
+    }
+    return bestMove;
+}
+
+function agentMove(player) {
+    const instrText = document.getElementById(player === 'X' ? 'instrX' : 'instrO').value;
+    const prefs = parseInstructions(instrText);
+    const opp = player === 'X' ? 'O' : 'X';
+    const empty = getEmpty(board);
+    const thoughts = [];
+
+    if (empty.length === 0) return { move: -1, thoughts: ['No moves available.'] };
+
+    // Random mode
+    if (prefs.random) {
+        const move = empty[Math.floor(Math.random() * empty.length)];
+        thoughts.push('🎲 Playing randomly as instructed!');
+        thoughts.push(`Picking ${POS_NAMES[move]}.`);
+        return { move, thoughts };
+    }
+
+    // 1. Win if possible
+    const winMove = findWinningMove(board, player);
+    if (winMove >= 0) {
+        thoughts.push('🎯 I see a winning move!');
+        thoughts.push(`Playing ${POS_NAMES[winMove]} to win.`);
+        return { move: winMove, thoughts };
+    }
+
+    // 2. Block opponent win
+    const blockMove = findWinningMove(board, opp);
+    if (blockMove >= 0) {
+        thoughts.push('🛡️ Opponent about to win — must block!');
+        thoughts.push(`Blocking at ${POS_NAMES[blockMove]}.`);
+        return { move: blockMove, thoughts };
+    }
+
+    // 3. Fork (if instructed or aggressive)
+    if (prefs.fork || prefs.aggressive) {
+        const forkMove = findForkMove(board, player);
+        if (forkMove >= 0) {
+            thoughts.push('🔱 Setting up a fork — two ways to win!');
+            thoughts.push(`Playing ${POS_NAMES[forkMove]}.`);
+            return { move: forkMove, thoughts };
+        }
+        // Block opponent fork
+        const oppFork = findForkMove(board, opp);
+        if (oppFork >= 0) {
+            thoughts.push('⚠️ Blocking opponent fork.');
+            thoughts.push(`Playing ${POS_NAMES[oppFork]}.`);
+            return { move: oppFork, thoughts };
+        }
+    }
+
+    // 4. Instruction-based preferences
+    if (prefs.preferCenter && board[CENTER] === null) {
+        thoughts.push('📍 Taking center as instructed.');
+        return { move: CENTER, thoughts };
+    }
+    if (prefs.preferCorners) {
+        const c = CORNERS.filter(i => board[i] === null);
+        if (c.length > 0) {
+            const move = c[Math.floor(Math.random() * c.length)];
+            thoughts.push('📐 Playing a corner as instructed.');
+            thoughts.push(`Choosing ${POS_NAMES[move]}.`);
+            return { move, thoughts };
+        }
+    }
+    if (prefs.preferEdges) {
+        const e = EDGES.filter(i => board[i] === null);
+        if (e.length > 0) {
+            const move = e[Math.floor(Math.random() * e.length)];
+            thoughts.push('➡️ Playing an edge as instructed.');
+            return { move, thoughts };
+        }
+    }
+
+    // 5. Defensive: use minimax for optimal play
+    if (prefs.defensive) {
+        thoughts.push('🧠 Playing defensively — computing optimal move...');
+        const move = bestMinimax([...board], player);
+        thoughts.push(`Best move: ${POS_NAMES[move]}.`);
+        return { move, thoughts };
+    }
+
+    // 6. Aggressive: try fork, then minimax
+    if (prefs.aggressive) {
+        thoughts.push('⚔️ Aggressive mode — looking for attack...');
+        const move = bestMinimax([...board], player);
+        thoughts.push(`Attacking at ${POS_NAMES[move]}.`);
+        return { move, thoughts };
+    }
+
+    // 7. Default: minimax with slight personality
+    thoughts.push('🧠 Thinking...');
+    const move = bestMinimax([...board], player);
+    thoughts.push(`Calculated best move: ${POS_NAMES[move]}.`);
+    return { move, thoughts };
+}
+
+// ─── UI Updates ───
+function renderBoard() {
+    cells.forEach((cell, i) => {
+        cell.textContent = board[i] || '';
+        cell.className = 'cell';
+        if (board[i]) cell.classList.add(board[i].toLowerCase());
+    });
+}
+
+function highlightWin(line) {
+    if (!line) return;
+    line.forEach(i => cells[i].classList.add('win-cell'));
+}
+
+function highlightMove(i) {
+    cells[i].classList.add('highlight');
+}
+
+function addThought(player, thoughts) {
+    const box = document.getElementById(player === 'X' ? 'thinkX' : 'thinkO');
+    box.innerHTML = thoughts.map(t => `<div class="thought">${t}</div>`).join('');
+}
+
+function addMoveLog(player, pos) {
+    moveCount++;
+    const cls = player === 'X' ? 'x-move' : 'o-move';
+    moveLogEl.innerHTML += `<div class="move-entry">${moveCount}. <span class="${cls}">${player}</span> → ${POS_NAMES[pos]}</div>`;
+    moveLogEl.scrollTop = moveLogEl.scrollHeight;
+}
+
+function updateScores() {
+    document.getElementById('scoreX').textContent = scores.X;
+    document.getElementById('scoreO').textContent = scores.O;
+    document.getElementById('scoreDraw').textContent = scores.D;
+}
+
+// ─── Game Loop ───
+function delay(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+async function startGame() {
+    const startBtn = document.getElementById('startBtn');
+    startBtn.disabled = true;
+    startBtn.textContent = '⏳ Running...';
+
+    board = Array(9).fill(null);
+    currentPlayer = 'X';
+    gameRunning = true;
+    moveCount = 0;
+    moveLogEl.innerHTML = '';
+    document.getElementById('thinkX').innerHTML = '';
+    document.getElementById('thinkO').innerHTML = '';
+    renderBoard();
+    statusEl.textContent = 'Agent X is thinking...';
+
+    while (gameRunning) {
+        const speed = parseInt(speedSlider.value);
+        statusEl.textContent = `Agent ${currentPlayer} is thinking...`;
+        await delay(speed * 0.4);
+
+        const { move, thoughts } = agentMove(currentPlayer);
+        addThought(currentPlayer, thoughts);
+
+        if (move < 0) break;
+
+        await delay(speed * 0.6);
+        board[move] = currentPlayer;
+        renderBoard();
+        highlightMove(move);
+        addMoveLog(currentPlayer, move);
+
+        const result = checkWinner(board);
+        if (result) {
+            gameRunning = false;
+            if (result.winner === 'D') {
+                statusEl.textContent = "It's a draw! 🤝";
+                scores.D++;
+            } else {
+                statusEl.textContent = `Agent ${result.winner} wins! 🏆`;
+                highlightWin(result.line);
+                scores[result.winner]++;
+            }
+            updateScores();
+            break;
+        }
+
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    }
+
+    startBtn.disabled = false;
+    startBtn.textContent = '▶ Start';
+}
+
+function resetScores() {
+    scores = { X: 0, O: 0, D: 0 };
+    updateScores();
+    board = Array(9).fill(null);
+    moveLogEl.innerHTML = '';
+    document.getElementById('thinkX').innerHTML = '';
+    document.getElementById('thinkO').innerHTML = '';
+    statusEl.textContent = 'Press Start to begin!';
+    renderBoard();
+}
+</script>
+</body>
+</html>
