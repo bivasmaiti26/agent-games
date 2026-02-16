@@ -175,6 +175,32 @@
             accent-color: #58a6ff;
         }
 
+        /* API Key Bar */
+        .api-bar {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 0.75rem 2rem;
+        }
+        .api-bar-inner {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+        .api-bar label {
+            font-size: 0.85rem;
+            color: #8b949e;
+            white-space: nowrap;
+        }
+        .api-bar input:focus, .api-bar select:focus { outline: none; border-color: #58a6ff; }
+        .api-status {
+            font-size: 0.8rem;
+            color: #f78166;
+        }
+        .api-status.connected { color: #3fb950; }
+
         /* Move log */
         .move-log {
             background: #161b22;
@@ -213,6 +239,14 @@
     </style>
 </head>
 <body>
+    <!-- API Bar -->
+    <div class="api-bar">
+        <div class="api-bar-inner">
+            <label>🔑 Auth:</label>
+            <span class="api-status" id="apiStatus">Azure OpenAI (server-side via AzureCliCredential)</span>
+        </div>
+    </div>
+
     <div class="header">
         <a href="index.html">← Back to Games</a>
         <h1>❌⭕ Tic-Tac-Toe</h1>
@@ -224,7 +258,7 @@
         <div class="agent-panel x">
             <h2>🤖 Agent X</h2>
             <label for="instrX">Your instructions:</label>
-            <textarea id="instrX" placeholder="e.g. Play corners first, be aggressive, try to fork..."></textarea>
+            <textarea id="instrX" placeholder="e.g. Play aggressively, try to set up forks, always go for corners first..."></textarea>
             <label>Agent thinking:</label>
             <div class="thinking-box" id="thinkX"></div>
         </div>
@@ -237,7 +271,7 @@
                 <div>O: <span class="score o-score" id="scoreO">0</span></div>
             </div>
 
-            <div class="status" id="status">Press Start to begin!</div>
+            <div class="status" id="status">Enter your API key &amp; press Start!</div>
 
             <div class="board" id="board">
                 <div class="cell" data-i="0"></div>
@@ -256,12 +290,6 @@
                 <button class="btn" id="resetBtn" onclick="resetScores()">Reset Scores</button>
             </div>
 
-            <div class="speed-control">
-                <span>Speed:</span>
-                <input type="range" id="speed" min="100" max="2000" value="800" step="100">
-                <span id="speedLabel">0.8s</span>
-            </div>
-
             <div class="move-log" id="moveLog"></div>
         </div>
 
@@ -269,7 +297,7 @@
         <div class="agent-panel o">
             <h2>🤖 Agent O</h2>
             <label for="instrO">Your instructions:</label>
-            <textarea id="instrO" placeholder="e.g. Always take center, play defensively, block opponent..."></textarea>
+            <textarea id="instrO" placeholder="e.g. Play defensively, always block the opponent, prefer the center..."></textarea>
             <label>Agent thinking:</label>
             <div class="thinking-box" id="thinkO"></div>
         </div>
@@ -288,41 +316,15 @@ const LINES = [
     [0,3,6],[1,4,7],[2,5,8],
     [0,4,8],[2,4,6]
 ];
-const CORNERS = [0, 2, 6, 8];
-const EDGES = [1, 3, 5, 7];
-const CENTER = 4;
-const POS_NAMES = ['top-left','top-mid','top-right','mid-left','center','mid-right','bot-left','bot-mid','bot-right'];
+const POS_NAMES = ['top-left','top-center','top-right','middle-left','center','middle-right','bottom-left','bottom-center','bottom-right'];
 
 // ─── UI References ───
 const cells = document.querySelectorAll('.cell');
 const statusEl = document.getElementById('status');
 const moveLogEl = document.getElementById('moveLog');
-const speedSlider = document.getElementById('speed');
-const speedLabel = document.getElementById('speedLabel');
+const apiStatusEl = document.getElementById('apiStatus');
 
-speedSlider.addEventListener('input', () => {
-    speedLabel.textContent = (speedSlider.value / 1000).toFixed(1) + 's';
-});
-
-// ─── Instruction Parser ───
-function parseInstructions(text) {
-    const t = text.toLowerCase();
-    return {
-        preferCorners: /corner/i.test(t),
-        preferCenter: /center|middle/i.test(t),
-        preferEdges: /edge|side/i.test(t),
-        aggressive: /aggress|attack|offen/i.test(t),
-        defensive: /defen|block|safe|careful/i.test(t),
-        random: /random|chaos|unpredic/i.test(t),
-        fork: /fork|trap/i.test(t),
-    };
-}
-
-// ─── Agent AI ───
-function getEmpty(b) {
-    return b.map((v, i) => v === null ? i : -1).filter(i => i >= 0);
-}
-
+// ─── Board Logic ───
 function checkWinner(b) {
     for (const [a, c, d] of LINES) {
         if (b[a] && b[a] === b[c] && b[a] === b[d]) return { winner: b[a], line: [a, c, d] };
@@ -331,168 +333,40 @@ function checkWinner(b) {
     return null;
 }
 
-function findWinningMove(b, player) {
-    for (const i of getEmpty(b)) {
-        const copy = [...b];
-        copy[i] = player;
-        const res = checkWinner(copy);
-        if (res && res.winner === player) return i;
-    }
-    return -1;
-}
-
-function findForkMove(b, player) {
-    for (const i of getEmpty(b)) {
-        const copy = [...b];
-        copy[i] = player;
-        let winWays = 0;
-        for (const j of getEmpty(copy)) {
-            const copy2 = [...copy];
-            copy2[j] = player;
-            if (checkWinner(copy2)?.winner === player) winWays++;
-        }
-        if (winWays >= 2) return i;
-    }
-    return -1;
-}
-
-function minimax(b, player, depth, isMax, alpha, beta) {
-    const result = checkWinner(b);
-    if (result) {
-        if (result.winner === 'D') return 0;
-        return result.winner === player ? 10 - depth : depth - 10;
-    }
-    const empty = getEmpty(b);
-    if (isMax) {
-        let best = -Infinity;
-        for (const i of empty) {
-            b[i] = player;
-            best = Math.max(best, minimax(b, player, depth + 1, false, alpha, beta));
-            b[i] = null;
-            alpha = Math.max(alpha, best);
-            if (beta <= alpha) break;
-        }
-        return best;
-    } else {
-        const opp = player === 'X' ? 'O' : 'X';
-        let best = Infinity;
-        for (const i of empty) {
-            b[i] = opp;
-            best = Math.min(best, minimax(b, player, depth + 1, true, alpha, beta));
-            b[i] = null;
-            beta = Math.min(beta, best);
-            if (beta <= alpha) break;
-        }
-        return best;
-    }
-}
-
-function bestMinimax(b, player) {
-    let bestScore = -Infinity;
-    let bestMove = -1;
-    for (const i of getEmpty(b)) {
-        b[i] = player;
-        const score = minimax(b, player, 0, false, -Infinity, Infinity);
-        b[i] = null;
-        if (score > bestScore) { bestScore = score; bestMove = i; }
-    }
-    return bestMove;
-}
-
-function agentMove(player) {
+// ─── LLM Agent Move (calls backend) ───
+async function agentMove(player) {
     const instrText = document.getElementById(player === 'X' ? 'instrX' : 'instrO').value;
-    const prefs = parseInstructions(instrText);
-    const opp = player === 'X' ? 'O' : 'X';
-    const empty = getEmpty(board);
-    const thoughts = [];
 
-    if (empty.length === 0) return { move: -1, thoughts: ['No moves available.'] };
+    try {
+        const res = await fetch('/api/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                board: board,
+                player: player,
+                instructions: instrText,
+            }),
+        });
 
-    // Random mode
-    if (prefs.random) {
-        const move = empty[Math.floor(Math.random() * empty.length)];
-        thoughts.push('🎲 Playing randomly as instructed!');
-        thoughts.push(`Picking ${POS_NAMES[move]}.`);
-        return { move, thoughts };
-    }
-
-    // 1. Win if possible
-    const winMove = findWinningMove(board, player);
-    if (winMove >= 0) {
-        thoughts.push('🎯 I see a winning move!');
-        thoughts.push(`Playing ${POS_NAMES[winMove]} to win.`);
-        return { move: winMove, thoughts };
-    }
-
-    // 2. Block opponent win
-    const blockMove = findWinningMove(board, opp);
-    if (blockMove >= 0) {
-        thoughts.push('🛡️ Opponent about to win — must block!');
-        thoughts.push(`Blocking at ${POS_NAMES[blockMove]}.`);
-        return { move: blockMove, thoughts };
-    }
-
-    // 3. Fork (if instructed or aggressive)
-    if (prefs.fork || prefs.aggressive) {
-        const forkMove = findForkMove(board, player);
-        if (forkMove >= 0) {
-            thoughts.push('🔱 Setting up a fork — two ways to win!');
-            thoughts.push(`Playing ${POS_NAMES[forkMove]}.`);
-            return { move: forkMove, thoughts };
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`API error ${res.status}: ${err}`);
         }
-        // Block opponent fork
-        const oppFork = findForkMove(board, opp);
-        if (oppFork >= 0) {
-            thoughts.push('⚠️ Blocking opponent fork.');
-            thoughts.push(`Playing ${POS_NAMES[oppFork]}.`);
-            return { move: oppFork, thoughts };
-        }
-    }
 
-    // 4. Instruction-based preferences
-    if (prefs.preferCenter && board[CENTER] === null) {
-        thoughts.push('📍 Taking center as instructed.');
-        return { move: CENTER, thoughts };
+        const data = await res.json();
+        return {
+            move: data.move,
+            thoughts: [`🧠 ${data.thinking}`, `📍 Playing ${data.position}.`],
+        };
+    } catch (e) {
+        // Fallback to first empty cell
+        const empty = board.map((v, i) => v === null ? i : -1).filter(i => i >= 0);
+        const move = empty.length > 0 ? empty[0] : -1;
+        return {
+            move,
+            thoughts: [`⚠️ ${e.message}`, move >= 0 ? `Falling back to ${POS_NAMES[move]}.` : 'No moves.'],
+        };
     }
-    if (prefs.preferCorners) {
-        const c = CORNERS.filter(i => board[i] === null);
-        if (c.length > 0) {
-            const move = c[Math.floor(Math.random() * c.length)];
-            thoughts.push('📐 Playing a corner as instructed.');
-            thoughts.push(`Choosing ${POS_NAMES[move]}.`);
-            return { move, thoughts };
-        }
-    }
-    if (prefs.preferEdges) {
-        const e = EDGES.filter(i => board[i] === null);
-        if (e.length > 0) {
-            const move = e[Math.floor(Math.random() * e.length)];
-            thoughts.push('➡️ Playing an edge as instructed.');
-            return { move, thoughts };
-        }
-    }
-
-    // 5. Defensive: use minimax for optimal play
-    if (prefs.defensive) {
-        thoughts.push('🧠 Playing defensively — computing optimal move...');
-        const move = bestMinimax([...board], player);
-        thoughts.push(`Best move: ${POS_NAMES[move]}.`);
-        return { move, thoughts };
-    }
-
-    // 6. Aggressive: try fork, then minimax
-    if (prefs.aggressive) {
-        thoughts.push('⚔️ Aggressive mode — looking for attack...');
-        const move = bestMinimax([...board], player);
-        thoughts.push(`Attacking at ${POS_NAMES[move]}.`);
-        return { move, thoughts };
-    }
-
-    // 7. Default: minimax with slight personality
-    thoughts.push('🧠 Thinking...');
-    const move = bestMinimax([...board], player);
-    thoughts.push(`Calculated best move: ${POS_NAMES[move]}.`);
-    return { move, thoughts };
 }
 
 // ─── UI Updates ───
@@ -532,10 +406,6 @@ function updateScores() {
 }
 
 // ─── Game Loop ───
-function delay(ms) {
-    return new Promise(r => setTimeout(r, ms));
-}
-
 async function startGame() {
     const startBtn = document.getElementById('startBtn');
     startBtn.disabled = true;
@@ -550,18 +420,17 @@ async function startGame() {
     document.getElementById('thinkO').innerHTML = '';
     renderBoard();
     statusEl.textContent = 'Agent X is thinking...';
+    apiStatusEl.textContent = 'Using Azure OpenAI (server-side auth)';
+    apiStatusEl.className = 'api-status connected';
 
     while (gameRunning) {
-        const speed = parseInt(speedSlider.value);
         statusEl.textContent = `Agent ${currentPlayer} is thinking...`;
-        await delay(speed * 0.4);
 
-        const { move, thoughts } = agentMove(currentPlayer);
+        const { move, thoughts } = await agentMove(currentPlayer);
         addThought(currentPlayer, thoughts);
 
         if (move < 0) break;
 
-        await delay(speed * 0.6);
         board[move] = currentPlayer;
         renderBoard();
         highlightMove(move);
